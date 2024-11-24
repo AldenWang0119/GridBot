@@ -1,5 +1,7 @@
 ﻿using System;
 using WebSocketSharp;
+using GridBot.Models;
+using Newtonsoft.Json.Linq;
 
 namespace GridBot.Services
 {
@@ -40,8 +42,23 @@ namespace GridBot.Services
         // 接收到數據時觸發
         private void OnMessageReceived(object sender, MessageEventArgs e)
         {
-            Console.WriteLine("接收到數據:");
-            Console.WriteLine(e.Data); // 打印接收到的 JSON 數據
+            // 解析 JSON 數據
+            var json = JObject.Parse(e.Data);
+
+            // 映射到 TickerData 模型
+            var tickerData = new TickerData
+            {
+                Symbol = json["s"]?.ToString(),                             // 交易對
+                CurrentPrice = decimal.Parse(json["c"]?.ToString() ?? "0"), // 最新成交價
+                BidPrice = decimal.Parse(json["b"]?.ToString() ?? "0"),     // 買一價
+                AskPrice = decimal.Parse(json["a"]?.ToString() ?? "0"),     // 賣一價
+                HighPrice = decimal.Parse(json["h"]?.ToString() ?? "0"),    // 24 小時最高價
+                LowPrice = decimal.Parse(json["l"]?.ToString() ?? "0"),     // 24 小時最低價
+                Volume = decimal.Parse(json["v"]?.ToString() ?? "0")        // 24 小時成交量
+            };
+
+            // 打印數據作為測試
+            Console.WriteLine($"交易對: {tickerData.Symbol}, 現價: {tickerData.CurrentPrice} USDT");
         }
 
         // 發生錯誤時觸發
