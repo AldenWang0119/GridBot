@@ -10,7 +10,8 @@ namespace GridBot.Services
         // 構造函數，接受交易對參數
         public WebSocketService(string coin)
         {
-            string wsUrl = $"wss://stream.binance.com:9443/ws/{coin}@trade";
+            //string wsUrl = $"wss://stream.binance.com:9443/ws/{coin}@trade"; // 交易對
+            string wsUrl = $"wss://stream.binance.com:9443/ws/{coin}@ticker"; // 現價
             _webSocket = new WebSocket(wsUrl);
 
             // 訂閱事件
