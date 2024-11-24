@@ -1,3 +1,4 @@
 /.vs/
 /GridBot/bin/
 /GridBot/obj/
+/GridBot/appsettings.json
