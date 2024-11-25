@@ -6,8 +6,16 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        await GetBalance();
+        // 加載配置
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
 
+        // 初始化 OrderService
+        var orderService = new OrderService(configuration);
+
+        await GetBalance(orderService);
         SubscribeToPriceUpdates();
     }
 
@@ -23,18 +31,8 @@ class Program
         webSocketService.Close();
     }
 
-    private static async Task GetBalance()
+    private static async Task GetBalance(OrderService orderService)
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
-
-        string apiKey = configuration["Binance:ApiKey"];
-        string secretKey = configuration["Binance:SecretKey"];
-
-        var orderService = new OrderService(apiKey, secretKey);
-
         try
         {
             Console.WriteLine("正在查詢帳戶餘額...");

@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace GridBot.Services
 {
@@ -12,11 +13,18 @@ namespace GridBot.Services
         private readonly string _apiKey;
         private readonly string _secretKey;
 
-        public OrderService(string apiKey, string secretKey)
+        public OrderService(IConfiguration configuration)
         {
             _httpClient = new HttpClient();
-            _apiKey = apiKey;
-            _secretKey = secretKey;
+
+            // 從配置中讀取 API Key 和 Secret Key
+            _apiKey = configuration["Binance:ApiKey"];
+            _secretKey = configuration["Binance:SecretKey"];
+
+            if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_secretKey))
+            {
+                throw new ArgumentException("API Key 或 Secret Key 未正確配置！");
+            }
         }
 
         public async Task<string> PlaceBuyOrderAsync(string symbol, decimal quantity, decimal price)
@@ -65,12 +73,11 @@ namespace GridBot.Services
             return await response.Content.ReadAsStringAsync();
         }
 
-
         private string ComputeSignature(string queryString)
         {
-            using (var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(_secretKey)))
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_secretKey)))
             {
-                var hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(queryString));
+                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(queryString));
                 return BitConverter.ToString(hash).Replace("-", "").ToLower();
             }
         }
