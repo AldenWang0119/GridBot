@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace GridBot.Services
 {
-    internal class OrderService
+    public class OrderService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;

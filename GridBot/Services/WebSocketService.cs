@@ -9,10 +9,12 @@ namespace GridBot.Services
     {
         private WebSocket _webSocket;
 
+        // 定義一個事件來通知價格更新
+        public event Action<decimal>? OnPriceUpdate;
+
         // 構造函數，接受交易對參數
         public WebSocketService(string coin)
         {
-            //string wsUrl = $"wss://stream.binance.com:9443/ws/{coin}@trade"; // 交易對
             string wsUrl = $"wss://stream.binance.com:9443/ws/{coin}@ticker"; // 現價
             _webSocket = new WebSocket(wsUrl);
 
@@ -42,27 +44,28 @@ namespace GridBot.Services
         // 接收到數據時觸發
         private void OnMessageReceived(object sender, MessageEventArgs e)
         {
-            // 解析 JSON 數據
-            var json = JObject.Parse(e.Data);
-
-            // 映射到 TickerData 模型
-            var tickerData = new TickerData
+            try
             {
-                Symbol = json["s"]?.ToString(),                             // 交易對
-                CurrentPrice = decimal.Parse(json["c"]?.ToString() ?? "0"), // 最新成交價
-                BidPrice = decimal.Parse(json["b"]?.ToString() ?? "0"),     // 買一價
-                AskPrice = decimal.Parse(json["a"]?.ToString() ?? "0"),     // 賣一價
-                HighPrice = decimal.Parse(json["h"]?.ToString() ?? "0"),    // 24 小時最高價
-                LowPrice = decimal.Parse(json["l"]?.ToString() ?? "0"),     // 24 小時最低價
-                Volume = decimal.Parse(json["v"]?.ToString() ?? "0")        // 24 小時成交量
-            };
+                // 解析 JSON 數據
+                var json = JObject.Parse(e.Data);
 
-            // 打印數據作為測試
-            Console.WriteLine($"交易對: {tickerData.Symbol}, 現價: {tickerData.CurrentPrice} USDT");
+                // 獲取現價
+                decimal currentPrice = decimal.Parse(json["c"]?.ToString() ?? "0");
+
+                // 觸發價格更新事件
+                OnPriceUpdate?.Invoke(currentPrice);
+
+                // 打印數據作為測試
+                Console.WriteLine($"現價更新: {currentPrice} USDT");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"解析 WebSocket 消息失敗: {ex.Message}");
+            }
         }
 
         // 發生錯誤時觸發
-        private void OnError(object sender, WebSocketSharp.ErrorEventArgs e) // 注意這裡的 ErrorEventArgs 是 WebSocketSharp 提供的
+        private void OnError(object sender, WebSocketSharp.ErrorEventArgs e)
         {
             Console.WriteLine($"WebSocket 錯誤: {e.Message}");
         }
