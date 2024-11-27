@@ -12,10 +12,11 @@ namespace GridBot.Strategies
     {
         private readonly GridConfig _config;
         private readonly OrderService _orderService;
-        private readonly List<decimal> _gridPrices; // 網格價格列表
-        private readonly Dictionary<decimal, bool> _buyFlags; // 買單執行狀態
-        private readonly Dictionary<decimal, bool> _sellFlags; // 賣單執行狀態
-        private bool _isTerminated; // 是否已終止網格策略
+        private readonly List<decimal> _gridPrices;
+        private readonly Dictionary<decimal, bool> _buyFlags;
+        private readonly Dictionary<decimal, bool> _sellFlags;
+        private bool _isTerminated;
+        private decimal? _lastPrice;
 
         public GridStrategy(GridConfig config, OrderService orderService)
         {
@@ -51,44 +52,62 @@ namespace GridBot.Strategies
                 return;
             }
 
-            // 檢查止盈和止損條件
+            // 初始化時不處理
+            if (_lastPrice == null)
+            {
+                _lastPrice = currentPrice;
+                return;
+            }
+
+            if (CheckTerminationConditions(currentPrice)) return;
+
+            // 處理價格穿越網格價格時的邏輯
+            foreach (var gridPrice in _gridPrices)
+            {
+                if (await HandleGridCrossing(currentPrice, gridPrice, "BUY", _lastPrice > gridPrice && currentPrice <= gridPrice, _buyFlags))
+                {
+                    _sellFlags[gridPrice] = false;
+                }
+
+                if (await HandleGridCrossing(currentPrice, gridPrice, "SELL", _lastPrice < gridPrice && currentPrice >= gridPrice, _sellFlags))
+                {
+                    _buyFlags[gridPrice] = false;
+                }
+            }
+
+            _lastPrice = currentPrice; 
+        }
+
+        private bool CheckTerminationConditions(decimal currentPrice)
+        {
             if (currentPrice >= _config.UpperLimit)
             {
                 Console.WriteLine($"觸發止盈，價格達到上限：{currentPrice}");
-                await TerminateStrategy("止盈");
-                return;
+                TerminateStrategy("止盈").Wait();
+                return true;
             }
 
             if (currentPrice <= _config.LowerLimit)
             {
                 Console.WriteLine($"觸發止損，價格達到下限：{currentPrice}");
-                await TerminateStrategy("止損");
-                return;
+                TerminateStrategy("止損").Wait();
+                return true;
             }
 
-            // 處理網格內的買賣邏輯
-            foreach (var gridPrice in _gridPrices)
+            return false;
+        }
+
+        private async Task<bool> HandleGridCrossing(decimal currentPrice, decimal gridPrice, string side, bool condition, Dictionary<decimal, bool> flags)
+        {
+            if (!flags[gridPrice] && condition)
             {
-                if (!_buyFlags[gridPrice] && currentPrice <= gridPrice)
-                {
-                    Console.WriteLine($"觸發買入網格，價格：{gridPrice}");
-
-                    await ExecuteOrder("BUY", gridPrice);
-
-                    _buyFlags[gridPrice] = true; // 標記為已買入
-                    _sellFlags[gridPrice] = false; // 重置賣單狀態
-                }
-
-                if (!_sellFlags[gridPrice] && currentPrice >= gridPrice)
-                {
-                    Console.WriteLine($"觸發賣出網格，價格：{gridPrice}");
-
-                    await ExecuteOrder("SELL", gridPrice);
-
-                    _sellFlags[gridPrice] = true; // 標記為已賣出
-                    _buyFlags[gridPrice] = false; // 重置買單狀態
-                }
+                Console.WriteLine($"觸發{side}網格，價格：{gridPrice}");
+                await ExecuteOrder(side, gridPrice);
+                flags[gridPrice] = true; 
+                return true;
             }
+
+            return false;
         }
 
         private async Task ExecuteOrder(string side, decimal price)
@@ -103,7 +122,6 @@ namespace GridBot.Strategies
                     return;
                 }
 
-                // 下單
                 await _orderService.PlaceOrderAsync(_config.Symbol, side, quantity, price);
                 Console.WriteLine($"{side} 訂單成功，價格：{price}，數量：{quantity}");
             }
@@ -112,7 +130,6 @@ namespace GridBot.Strategies
                 Console.WriteLine($"{side} 訂單失敗，價格：{price}，錯誤：{ex.Message}");
             }
         }
-
 
         private async Task TerminateStrategy(string reason)
         {
