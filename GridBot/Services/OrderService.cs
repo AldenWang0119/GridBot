@@ -13,14 +13,16 @@ namespace GridBot.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private readonly string _secretKey;
+        private readonly string _endpoint;
+        private static string _timeInForce = "GTC";
 
         public OrderService(IConfiguration configuration)
         {
             _httpClient = new HttpClient();
 
-            // 從配置中讀取 API Key 和 Secret Key
             _apiKey = configuration["Binance:ApiKey"];
             _secretKey = configuration["Binance:SecretKey"];
+            _endpoint = configuration["Binance:Endpoint"];
 
             if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_secretKey))
             {
@@ -63,17 +65,16 @@ namespace GridBot.Services
 
         public async Task<string> PlaceOrderAsync(string symbol, string side, decimal quantity, decimal? price = null, string type = "LIMIT")
         {
-            string endpoint = "https://api.binance.com/api/v3/order";
-            string timeInForce = "GTC"; 
+
             string queryString = $"symbol={symbol}&side={side}&type={type}&quantity={quantity}&timestamp={GetTimestamp()}";
 
             if (type == "LIMIT" && price.HasValue)
             {
-                queryString += $"&timeInForce={timeInForce}&price={price.Value}";
+                queryString += $"&timeInForce={_timeInForce}&price={price.Value}";
             }
 
             string signature = ComputeSignature(queryString);
-            string url = $"{endpoint}?{queryString}&signature={signature}";
+            string url = $"{_endpoint}?{queryString}&signature={signature}";
 
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("X-MBX-APIKEY", _apiKey);
@@ -91,11 +92,10 @@ namespace GridBot.Services
 
         private async Task<string> GetAccountBalanceAsync()
         {
-            string endpoint = "https://api.binance.com/api/v3/account";
             string queryString = $"timestamp={GetTimestamp()}";
 
             string signature = ComputeSignature(queryString);
-            string url = $"{endpoint}?{queryString}&signature={signature}";
+            string url = $"{_endpoint}?{queryString}&signature={signature}";
 
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("X-MBX-APIKEY", _apiKey);
