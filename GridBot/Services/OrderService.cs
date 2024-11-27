@@ -28,7 +28,7 @@ namespace GridBot.Services
             }
         }
 
-        public async Task<string?> GetTargetAssetBalance(string targetAsset)
+        public async Task<Decimal?> GetTargetAssetBalance(string targetAsset)
         {
             try
             {
@@ -46,7 +46,7 @@ namespace GridBot.Services
                     string free = targetBalance["free"]?.ToString() ?? "0";
                     string locked = targetBalance["locked"]?.ToString() ?? "0";
 
-                    return free;
+                    return Convert.ToDecimal(free);
                 }
                 else
                 {
@@ -57,7 +57,7 @@ namespace GridBot.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"查詢 {targetAsset} 資產餘額失敗: {ex.Message}");
-                return "0"; 
+                return null; 
             }
         }
 
@@ -101,7 +101,7 @@ namespace GridBot.Services
             request.Headers.Add("X-MBX-APIKEY", _apiKey);
 
             var response = await _httpClient.SendAsync(request);
-            return await response.Content.ReadAsStringAsync();
+            return await  response.Content.ReadAsStringAsync();
         }
 
         private string ComputeSignature(string queryString)

@@ -126,7 +126,7 @@ namespace GridBot.Strategies
                 if (targetBalance != null)
                 {
 
-                    if (Convert.ToInt32(targetBalance) > 0)
+                    if (targetBalance.Value > 0)
                     {
                         await _orderService.PlaceOrderAsync(_config.Symbol, "SELL", Convert.ToInt32(targetBalance), null, "MARKET");
                         Console.WriteLine($"成功平倉，賣出 {targetBalance} {_config.Symbol}。");
@@ -146,7 +146,7 @@ namespace GridBot.Strategies
                 Console.WriteLine($"平倉失敗，錯誤：{ex.Message}");
             }
 
-            _isTerminated = true; // 標記策略已終止
+            _isTerminated = true;
         }
 
     }
