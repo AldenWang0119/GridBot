@@ -28,40 +28,36 @@ namespace GridBot.Services
             }
         }
 
-        public async Task GetBalanceList()
+        public async Task<string?> GetTargetAssetBalance(string targetAsset)
         {
             try
             {
-                Console.WriteLine("正在查詢帳戶餘額...");
+                Console.WriteLine($"正在查詢 {targetAsset} 資產餘額...");
                 string accountBalance = await GetAccountBalanceAsync();
 
                 var json = JObject.Parse(accountBalance);
 
-                // 過濾出有餘額的資產
-                var balances = json["balances"]?
-                    .Where(b => b["free"] != null && decimal.TryParse(b["free"]?.ToString(), out decimal free) && free > 0)
-                    .ToList();
+                // 查找目標資產的餘額
+                var targetBalance = json["balances"]?
+                    .FirstOrDefault(b => b["asset"]?.ToString() == targetAsset);
 
-                if (balances != null && balances.Count > 0)
+                if (targetBalance != null)
                 {
-                    Console.WriteLine("有餘額的資產列表：");
-                    foreach (var balance in balances)
-                    {
-                        string asset = balance["asset"]?.ToString() ?? "未知資產";
-                        string free = balance["free"]?.ToString() ?? "0";
-                        string locked = balance["locked"]?.ToString() ?? "0";
+                    string free = targetBalance["free"]?.ToString() ?? "0";
+                    string locked = targetBalance["locked"]?.ToString() ?? "0";
 
-                        Console.WriteLine($"資產: {asset}, 可用餘額: {free}, 鎖定餘額: {locked}");
-                    }
+                    return free;
                 }
                 else
                 {
-                    Console.WriteLine("未找到有餘額的資產！");
+                    Console.WriteLine($"未找到目標資產 {targetAsset} 的餘額資訊！");
+                    return null;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"查詢帳戶餘額失敗: {ex.Message}");
+                Console.WriteLine($"查詢 {targetAsset} 資產餘額失敗: {ex.Message}");
+                return "0"; 
             }
         }
 

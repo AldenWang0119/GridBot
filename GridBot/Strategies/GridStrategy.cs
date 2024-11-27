@@ -1,5 +1,6 @@
 ﻿using GridBot.Models;
 using GridBot.Services;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -117,11 +118,28 @@ namespace GridBot.Strategies
         {
             Console.WriteLine($"正在平倉並終止網格策略，原因：{reason}");
 
-            // 嘗試平掉所有倉位（可根據你的實現查詢當前倉位並平倉）
             try
             {
-                await _orderService.PlaceOrderAsync(_config.Symbol, "SELL", _config.InitialFunds, null, "MARKET");
-                Console.WriteLine("所有持倉已平倉。");
+                var targetBalance = await _orderService.GetTargetAssetBalance(_config.Symbol);
+
+
+                if (targetBalance != null)
+                {
+
+                    if (Convert.ToInt32(targetBalance) > 0)
+                    {
+                        await _orderService.PlaceOrderAsync(_config.Symbol, "SELL", Convert.ToInt32(targetBalance), null, "MARKET");
+                        Console.WriteLine($"成功平倉，賣出 {targetBalance} {_config.Symbol}。");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"沒有持倉可供平倉（{_config.Symbol} 餘額為 0）。");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"無法查詢到 {_config.Symbol} 的餘額。");
+                }
             }
             catch (Exception ex)
             {
@@ -130,5 +148,6 @@ namespace GridBot.Strategies
 
             _isTerminated = true; // 標記策略已終止
         }
+
     }
 }
